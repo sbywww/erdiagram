@@ -10,12 +10,14 @@ interface Snapshot {
   tables: Table[]
   relations: Relation[]
   nodePositions: Record<string, NodePosition>
+  tableGroups: Record<string, string[]>
 }
 
 interface DiagramState {
   tables: Table[]
   relations: Relation[]
   nodePositions: Record<string, NodePosition>
+  tableGroups: Record<string, string[]> // groupName → tableIds
   past: Snapshot[]
   future: Snapshot[]
   canUndo: boolean
@@ -27,6 +29,11 @@ interface DiagramState {
   addRelation: (relation: Relation) => void
   removeRelation: (id: string) => void
   setDiagram: (tables: Table[], relations: Relation[]) => void
+  addTableGroup: (name: string) => void
+  removeTableGroup: (name: string) => void
+  renameTableGroup: (oldName: string, newName: string) => void
+  moveTableToGroup: (tableId: string, groupName: string | null) => void
+  setRelationBendX: (relationId: string, bendX: number | undefined) => void
   undo: () => void
   redo: () => void
 }
@@ -80,7 +87,7 @@ const demoPositions: Record<string, NodePosition> = {
 const MAX_HISTORY = 50
 
 function snapshot(state: DiagramState): Snapshot {
-  return { tables: state.tables, relations: state.relations, nodePositions: state.nodePositions }
+  return { tables: state.tables, relations: state.relations, nodePositions: state.nodePositions, tableGroups: state.tableGroups }
 }
 
 function withHistory(state: DiagramState): Partial<DiagramState> {
@@ -92,6 +99,7 @@ export const useDiagramStore = create<DiagramState>((set) => ({
   tables: demoTables,
   relations: demoRelations,
   nodePositions: demoPositions,
+  tableGroups: {},
   past: [],
   future: [],
   canUndo: false,
@@ -147,6 +155,44 @@ export const useDiagramStore = create<DiagramState>((set) => ({
       ...withHistory(state),
       tables,
       relations,
+    })),
+
+  addTableGroup: (name) =>
+    set((state) => ({
+      tableGroups: { ...state.tableGroups, [name]: [] },
+    })),
+
+  removeTableGroup: (name) =>
+    set((state) => {
+      const { [name]: _, ...rest } = state.tableGroups
+      return { tableGroups: rest }
+    }),
+
+  renameTableGroup: (oldName, newName) =>
+    set((state) => {
+      const { [oldName]: ids, ...rest } = state.tableGroups
+      return { tableGroups: { ...rest, [newName]: ids ?? [] } }
+    }),
+
+  moveTableToGroup: (tableId, groupName) =>
+    set((state) => {
+      // Remove from all groups first
+      const cleaned: Record<string, string[]> = {}
+      for (const [k, v] of Object.entries(state.tableGroups)) {
+        cleaned[k] = v.filter((id) => id !== tableId)
+      }
+      // Add to target group
+      if (groupName && cleaned[groupName]) {
+        cleaned[groupName] = [...cleaned[groupName], tableId]
+      }
+      return { tableGroups: cleaned }
+    }),
+
+  setRelationBendX: (relationId, bendX) =>
+    set((state) => ({
+      relations: state.relations.map((r) =>
+        r.id === relationId ? { ...r, bendX } : r
+      ),
     })),
 
   undo: () =>

@@ -25,4 +25,5 @@ export interface Relation {
   sourceColumnId: string
   targetTableId: string
   targetColumnId: string
+  bendX?: number // X position of the vertical segment (default: midpoint)
 }

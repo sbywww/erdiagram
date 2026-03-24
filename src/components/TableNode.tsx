@@ -8,12 +8,18 @@ interface TableNodeData {
   [key: string]: unknown
 }
 
-export function TableNode({ data }: NodeProps) {
+export function TableNode({ data, selected }: NodeProps) {
   const { physicalName, logicalName, columns } = data as unknown as TableNodeData
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-300 dark:border-gray-600 min-w-[220px] text-xs">
-      <div className="bg-blue-600 dark:bg-blue-500 text-white px-3 py-2 rounded-t-lg">
+    <div
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg min-w-[220px] text-xs border ${
+        selected
+          ? 'border-blue-400 dark:border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5),0_0_20px_rgba(59,130,246,0.25)]'
+          : 'border-gray-300 dark:border-gray-600'
+      }`}
+    >
+      <div className="bg-blue-600 dark:bg-blue-500 text-white px-3 py-2 rounded-t-[7px]">
         <div className="font-bold text-sm">{physicalName}</div>
         <div className="text-blue-200 dark:text-blue-100 text-[10px]">{logicalName}</div>
       </div>
