@@ -33,7 +33,6 @@ interface DiagramState {
   removeTableGroup: (name: string) => void
   renameTableGroup: (oldName: string, newName: string) => void
   moveTableToGroup: (tableId: string, groupName: string | null) => void
-  setRelationBendX: (relationId: string, bendX: number | undefined) => void
   undo: () => void
   redo: () => void
 }
@@ -187,13 +186,6 @@ export const useDiagramStore = create<DiagramState>((set) => ({
       }
       return { tableGroups: cleaned }
     }),
-
-  setRelationBendX: (relationId, bendX) =>
-    set((state) => ({
-      relations: state.relations.map((r) =>
-        r.id === relationId ? { ...r, bendX } : r
-      ),
-    })),
 
   undo: () =>
     set((state) => {

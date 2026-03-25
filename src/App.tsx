@@ -101,20 +101,24 @@ function DiagramCanvas() {
     )
   }, [tables, nodePositions, selectedTableId, setNodes])
 
-  // Sync store → React Flow edges
+  // Sync store → React Flow edges (테이블 선택 시 연결된 edge에 animated 전달)
   useEffect(() => {
     setEdges(
-      relations.map((r) => ({
-        id: r.id,
-        source: r.sourceTableId,
-        sourceHandle: r.sourceColumnId,
-        target: r.targetTableId,
-        targetHandle: r.targetColumnId,
-        type: 'relation',
-        data: { relationType: r.type, bendX: r.bendX, relationId: r.id },
-      }))
+      relations.map((r) => {
+        const isConnected = selectedTableId === r.sourceTableId || selectedTableId === r.targetTableId
+        return {
+          id: r.id,
+          source: r.sourceTableId,
+          sourceHandle: r.sourceColumnId,
+          target: r.targetTableId,
+          targetHandle: r.targetColumnId,
+          type: 'relation',
+          animated: isConnected,
+          data: { relationType: r.type },
+        }
+      })
     )
-  }, [relations, setEdges])
+  }, [relations, selectedTableId, setEdges])
 
   // Keyboard shortcuts
   useEffect(() => {
