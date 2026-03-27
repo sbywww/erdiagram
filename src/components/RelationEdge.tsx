@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BaseEdge, getSmoothStepPath, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, Position, type EdgeProps } from '@xyflow/react'
 import type { RelationType } from '../models/types.ts'
 
 const BORDER_RADIUS = 8
@@ -7,13 +7,26 @@ const OFFSET = 20
 
 const COLOR_DEFAULT = '#555555'
 const COLOR_ACTIVE = '#3b82f6'
+const COLOR_NON_IDENTIFYING = '#f59e0b'
 
-/** IE 표기법: relationType → source/target 마커 종류 */
+function getLabel(marker: 'one' | 'many'): string {
+  return marker === 'one' ? '1' : '*'
+}
+
 function getMarkerTypes(type: RelationType): { source: 'one' | 'many'; target: 'one' | 'many' } {
   switch (type) {
     case '1:1': return { source: 'one', target: 'one' }
     case '1:N': return { source: 'one', target: 'many' }
     case 'N:M': return { source: 'many', target: 'many' }
+  }
+}
+
+function getLabelOffset(position: Position): { dx: number; dy: number } {
+  switch (position) {
+    case Position.Left:  return { dx: -5, dy: -10 }
+    case Position.Right: return { dx: 5, dy: -10 }
+    case Position.Top:   return { dx: 0, dy: -18 }
+    case Position.Bottom: return { dx: 0, dy: 18 }
   }
 }
 
@@ -24,6 +37,7 @@ export function RelationEdge({
 }: EdgeProps) {
   const [hovered, setHovered] = useState(false)
   const relationType = (data?.relationType as RelationType) ?? '1:N'
+  const identifying = (data?.identifying as boolean) ?? true
 
   const [edgePath] = getSmoothStepPath({
     sourceX, sourceY, sourcePosition,
@@ -33,11 +47,16 @@ export function RelationEdge({
   })
 
   const isActive = hovered || selected || animated
-  const stroke = isActive ? COLOR_ACTIVE : COLOR_DEFAULT
+  const stroke = identifying
+    ? (isActive ? COLOR_ACTIVE : COLOR_DEFAULT)
+    : COLOR_NON_IDENTIFYING
 
   const markers = getMarkerTypes(relationType)
   const oneId = `${id}-one`
   const manyId = `${id}-many`
+
+  const srcOffset = getLabelOffset(sourcePosition)
+  const tgtOffset = getLabelOffset(targetPosition)
 
   return (
     <g
@@ -71,6 +90,28 @@ export function RelationEdge({
             : {}),
         }}
       />
+      {isActive && (
+        <EdgeLabelRenderer>
+          <div
+            className="absolute text-[10px] font-bold pointer-events-none"
+            style={{
+              transform: `translate(-50%, -50%) translate(${sourceX + srcOffset.dx}px, ${sourceY + srcOffset.dy}px)`,
+              color: stroke,
+            }}
+          >
+            {getLabel(markers.source)}
+          </div>
+          <div
+            className="absolute text-[10px] font-bold pointer-events-none"
+            style={{
+              transform: `translate(-50%, -50%) translate(${targetX + tgtOffset.dx}px, ${targetY + tgtOffset.dy}px)`,
+              color: stroke,
+            }}
+          >
+            {getLabel(markers.target)}
+          </div>
+        </EdgeLabelRenderer>
+      )}
     </g>
   )
 }

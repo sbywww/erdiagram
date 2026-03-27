@@ -13,7 +13,7 @@ import {
   ReactFlowProvider,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { TableProperties, Pencil, Trash2, ArrowLeftRight } from 'lucide-react'
+import { TableProperties, Pencil, Trash2, ArrowLeftRight, Link } from 'lucide-react'
 import { TableNode } from './components/TableNode.tsx'
 import { RelationEdge } from './components/RelationEdge.tsx'
 import { Toolbar } from './components/Toolbar.tsx'
@@ -40,7 +40,7 @@ function MiniMapNode({ id, x, y, width }: { id: string; x: number; y: number; wi
 
   return (
     <g transform={`translate(${x}, ${y})`}>
-      <rect width={width} height={MINI_HEADER} rx={2} fill="#2563eb" />
+      <rect width={width} height={MINI_HEADER} rx={2} fill="#172554" />
       <rect y={MINI_HEADER} width={width} height={colCount * MINI_ROW} fill="#dbeafe" stroke="#93c5fd" strokeWidth={0.5} />
       {Array.from({ length: colCount }, (_, i) => (
         <line key={i} x1={0} y1={MINI_HEADER + i * MINI_ROW} x2={width} y2={MINI_HEADER + i * MINI_ROW} stroke="#bfdbfe" strokeWidth={0.3} />
@@ -67,7 +67,7 @@ function DiagramCanvas() {
   const {
     tables, relations, nodePositions,
     addTable, updateTable, removeTable, setNodePosition,
-    addRelation, undo, redo,
+    addRelation, removeRelation, displaySettings, setDisplaySettings, undo, redo,
   } = useDiagramStore()
   const theme = useThemeStore((s) => s.theme)
 
@@ -83,6 +83,8 @@ function DiagramCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [modalState, setModalState] = useState<ModalState>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [linkingSourceId, setLinkingSourceId] = useState<string | null>(null)
+  const [linkingConfirm, setLinkingConfirm] = useState<{ sourceId: string; targetId: string } | null>(null)
 
   // Sync store → React Flow nodes
   useEffect(() => {
@@ -96,10 +98,11 @@ function DiagramCanvas() {
           physicalName: t.physicalName,
           logicalName: t.logicalName,
           columns: t.columns,
+          displaySettings,
         },
       }))
     )
-  }, [tables, nodePositions, selectedTableId, setNodes])
+  }, [tables, nodePositions, selectedTableId, displaySettings, setNodes])
 
   // Sync store → React Flow edges (노드 위치에 따라 최적 핸들 방향 결정)
   useEffect(() => {
@@ -144,7 +147,7 @@ function DiagramCanvas() {
           targetHandle: r.targetColumnId + tgtSuffix,
           type: 'relation',
           animated: isConnected,
-          data: { relationType: r.type },
+          data: { relationType: r.type, identifying: r.identifying },
         }
       })
     )
@@ -157,6 +160,7 @@ function DiagramCanvas() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo() }
       if ((e.metaKey || e.ctrlKey) && e.key === 'y') { e.preventDefault(); redo() }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'Escape') setLinkingSourceId(null)
       if (e.key === 'v' || e.key === 'V') setPanMode(false)
       if (e.key === 'h' || e.key === 'H') setPanMode(true)
       if (e.key === ' ') { e.preventDefault(); setPanMode(true) }
@@ -197,6 +201,7 @@ function DiagramCanvas() {
       addRelation({
         id: crypto.randomUUID(),
         type: '1:N' as RelationType,
+        identifying: true,
         sourceTableId: connection.source,
         sourceColumnId: (connection.sourceHandle ?? '').replace(/-[lr]$/, ''),
         targetTableId: connection.target,
@@ -208,14 +213,76 @@ function DiagramCanvas() {
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (linkingSourceId && linkingSourceId !== node.id) {
+        setLinkingConfirm({ sourceId: linkingSourceId, targetId: node.id })
+        setLinkingSourceId(null)
+      }
       setSelectedTableId(node.id)
       setContextMenu(null)
     },
-    []
+    [linkingSourceId]
+  )
+
+  const handleLinkingConfirm = useCallback(
+    (identifying: boolean) => {
+      if (!linkingConfirm) return
+      const { sourceId, targetId } = linkingConfirm
+      const sourceTable = tables.find((t) => t.id === sourceId)
+      const targetTable = tables.find((t) => t.id === targetId)
+      if (!sourceTable || !targetTable) return
+
+      const sourcePK = sourceTable.columns.find((c) => c.isPK)
+      if (!sourcePK) return
+
+      const fkColName = `${sourceTable.physicalName}_id`
+      const existingCol = targetTable.columns.find((c) => c.name === fkColName)
+      let targetColId: string
+
+      if (existingCol) {
+        targetColId = existingCol.id
+        if (identifying && !existingCol.isFK) {
+          updateTable(targetId, {
+            columns: targetTable.columns.map((c) =>
+              c.id === existingCol.id ? { ...c, isFK: true } : c
+            ),
+          })
+        }
+      } else {
+        targetColId = crypto.randomUUID()
+        updateTable(targetId, {
+          columns: [
+            ...targetTable.columns,
+            {
+              id: targetColId,
+              name: fkColName,
+              type: sourcePK.type,
+              isPK: false,
+              isFK: identifying,
+              notNull: false,
+            },
+          ],
+        })
+      }
+
+      addRelation({
+        id: crypto.randomUUID(),
+        type: '1:N',
+        identifying,
+        sourceTableId: sourceId,
+        sourceColumnId: sourcePK.id,
+        targetTableId: targetId,
+        targetColumnId: targetColId,
+      })
+
+      setLinkingConfirm(null)
+    },
+    [linkingConfirm, tables, addRelation, updateTable]
   )
 
   const onPaneClick = useCallback(() => {
     setSelectedTableId(null)
+    setLinkingSourceId(null)
+    setLinkingConfirm(null)
     setContextMenu(null)
   }, [])
 
@@ -257,9 +324,7 @@ function DiagramCanvas() {
           {
             label: 'Add Relation',
             icon: <ArrowLeftRight size={13} />,
-            onClick: () => {
-              // TODO: relation creation flow
-            },
+            onClick: () => setLinkingSourceId(node.id),
           },
           {
             label: 'Delete Table',
@@ -274,6 +339,25 @@ function DiagramCanvas() {
       })
     },
     [removeTable]
+  )
+
+  const onEdgeContextMenu = useCallback(
+    (e: React.MouseEvent, edge: Edge) => {
+      e.preventDefault()
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        items: [
+          {
+            label: 'Delete Relation',
+            icon: <Trash2 size={13} />,
+            danger: true,
+            onClick: () => removeRelation(edge.id),
+          },
+        ],
+      })
+    },
+    [removeRelation]
   )
 
   // Modal handlers
@@ -344,6 +428,7 @@ function DiagramCanvas() {
               onPaneClick={onPaneClick}
               onPaneContextMenu={onPaneContextMenu}
               onNodeContextMenu={onNodeContextMenu}
+              onEdgeContextMenu={onEdgeContextMenu}
               panOnDrag={panMode}
               nodesDraggable={!panMode}
               proOptions={{ hideAttribution: true }}
@@ -359,6 +444,20 @@ function DiagramCanvas() {
               />
             </ReactFlow>
 
+            {linkingSourceId && (
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-blue-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg">
+                <Link size={12} />
+                <span>
+                  {tables.find((t) => t.id === linkingSourceId)?.physicalName} — 연결할 테이블을 클릭하세요
+                </span>
+                <button
+                  onClick={() => setLinkingSourceId(null)}
+                  className="ml-1 hover:bg-blue-600 rounded px-1"
+                >
+                  ESC
+                </button>
+              </div>
+            )}
             {/* Bottom toolbar */}
             <Toolbar panMode={panMode} onPanModeChange={setPanMode} />
           </div>
@@ -382,6 +481,44 @@ function DiagramCanvas() {
           items={contextMenu.items}
           onClose={() => setContextMenu(null)}
         />
+      )}
+
+      {/* Linking Confirm Dialog (식별/비식별) */}
+      {linkingConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-5 min-w-[280px]">
+            <div className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-1">
+              Relation 유형 선택
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              {tables.find((t) => t.id === linkingConfirm.sourceId)?.physicalName}
+              {' → '}
+              {tables.find((t) => t.id === linkingConfirm.targetId)?.physicalName}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleLinkingConfirm(true)}
+                className="flex-1 px-3 py-2 text-xs font-medium bg-blue-900 text-white rounded-md hover:bg-blue-800"
+              >
+                식별 관계
+                <div className="text-[10px] text-blue-300 mt-0.5">FK 컬럼 생성</div>
+              </button>
+              <button
+                onClick={() => handleLinkingConfirm(false)}
+                className="flex-1 px-3 py-2 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                비식별 관계
+                <div className="text-[10px] text-gray-400 mt-0.5">관계선만 표시</div>
+              </button>
+            </div>
+            <button
+              onClick={() => setLinkingConfirm(null)}
+              className="w-full mt-2 px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              취소
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Table Modal (Create / Edit) */}

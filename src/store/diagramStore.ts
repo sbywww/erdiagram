@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { Table, Relation } from '../models/types.ts'
+import type { Table, Relation, DisplaySettings } from '../models/types.ts'
+import { DEFAULT_DISPLAY_SETTINGS } from '../models/types.ts'
 
 interface NodePosition {
   x: number
@@ -18,6 +19,7 @@ interface DiagramState {
   relations: Relation[]
   nodePositions: Record<string, NodePosition>
   tableGroups: Record<string, string[]> // groupName → tableIds
+  displaySettings: DisplaySettings
   past: Snapshot[]
   future: Snapshot[]
   canUndo: boolean
@@ -33,6 +35,7 @@ interface DiagramState {
   removeTableGroup: (name: string) => void
   renameTableGroup: (oldName: string, newName: string) => void
   moveTableToGroup: (tableId: string, groupName: string | null) => void
+  setDisplaySettings: (settings: Partial<DisplaySettings>) => void
   undo: () => void
   redo: () => void
 }
@@ -73,8 +76,8 @@ const demoTables: Table[] = [
 ]
 
 const demoRelations: Relation[] = [
-  { id: 'r1', type: '1:N', sourceTableId: 'demo-teams', sourceColumnId: 't1', targetTableId: 'demo-users', targetColumnId: 'u4' },
-  { id: 'r2', type: '1:N', sourceTableId: 'demo-users', sourceColumnId: 'u1', targetTableId: 'demo-posts', targetColumnId: 'p4' },
+  { id: 'r1', type: '1:N', identifying: true, sourceTableId: 'demo-teams', sourceColumnId: 't1', targetTableId: 'demo-users', targetColumnId: 'u4' },
+  { id: 'r2', type: '1:N', identifying: true, sourceTableId: 'demo-users', sourceColumnId: 'u1', targetTableId: 'demo-posts', targetColumnId: 'p4' },
 ]
 
 const demoPositions: Record<string, NodePosition> = {
@@ -99,6 +102,7 @@ export const useDiagramStore = create<DiagramState>((set) => ({
   relations: demoRelations,
   nodePositions: demoPositions,
   tableGroups: {},
+  displaySettings: DEFAULT_DISPLAY_SETTINGS,
   past: [],
   future: [],
   canUndo: false,
@@ -115,10 +119,23 @@ export const useDiagramStore = create<DiagramState>((set) => ({
     })),
 
   updateTable: (id, updates) =>
-    set((state) => ({
-      ...withHistory(state),
-      tables: state.tables.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-    })),
+    set((state) => {
+      const updatedTables = state.tables.map((t) => (t.id === id ? { ...t, ...updates } : t))
+
+      if (!updates.columns) {
+        return { ...withHistory(state), tables: updatedTables }
+      }
+
+      const updatedColIds = new Set(updates.columns.map((c) => c.id))
+      const relations = state.relations.map((r) => {
+        if (r.identifying && r.targetTableId === id && !updatedColIds.has(r.targetColumnId)) {
+          return { ...r, identifying: false }
+        }
+        return r
+      })
+
+      return { ...withHistory(state), tables: updatedTables, relations }
+    }),
 
   removeTable: (id) =>
     set((state) => ({
@@ -144,10 +161,22 @@ export const useDiagramStore = create<DiagramState>((set) => ({
     })),
 
   removeRelation: (id) =>
-    set((state) => ({
-      ...withHistory(state),
-      relations: state.relations.filter((r) => r.id !== id),
-    })),
+    set((state) => {
+      const relation = state.relations.find((r) => r.id === id)
+      let tables = state.tables
+      if (relation?.identifying) {
+        tables = tables.map((t) =>
+          t.id === relation.targetTableId
+            ? { ...t, columns: t.columns.filter((c) => c.id !== relation.targetColumnId) }
+            : t
+        )
+      }
+      return {
+        ...withHistory(state),
+        tables,
+        relations: state.relations.filter((r) => r.id !== id),
+      }
+    }),
 
   setDiagram: (tables, relations) =>
     set((state) => ({
@@ -186,6 +215,11 @@ export const useDiagramStore = create<DiagramState>((set) => ({
       }
       return { tableGroups: cleaned }
     }),
+
+  setDisplaySettings: (settings) =>
+    set((state) => ({
+      displaySettings: { ...state.displaySettings, ...settings },
+    })),
 
   undo: () =>
     set((state) => {

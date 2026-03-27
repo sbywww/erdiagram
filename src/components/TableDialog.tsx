@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react'
 import type { Table, Column } from '../models/types.ts'
 
+const COLUMN_TYPES = [
+  'bigint', 'int', 'smallint', 'tinyint', 'decimal', 'numeric', 'float', 'double',
+  'varchar(50)', 'varchar(100)', 'varchar(255)', 'char(1)', 'char(36)',
+  'text', 'mediumtext', 'longtext',
+  'boolean', 'bit',
+  'date', 'datetime', 'timestamp', 'time',
+  'json', 'blob', 'mediumblob', 'longblob',
+  'uuid', 'enum',
+]
+
 interface TableDialogProps {
   table: Table | null
   onSave: (table: Table) => void
@@ -29,6 +39,8 @@ function createEmptyTable(): Table {
     columns: [createEmptyColumn()],
   }
 }
+
+const INPUT_CLASS = 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
 
 export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogProps) {
   const [form, setForm] = useState<Table>(table ?? createEmptyTable)
@@ -63,7 +75,7 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <form
         onSubmit={handleSubmit}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-[700px] max-h-[80vh] flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-[720px] max-h-[80vh] flex flex-col"
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -117,7 +129,7 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
             </div>
 
             {/* Column header */}
-            <div className="grid grid-cols-[40px_40px_1fr_120px_80px_40px_80px_1fr_32px] gap-1 text-[10px] text-gray-400 font-medium px-1 mb-1">
+            <div className="grid grid-cols-[32px_32px_1fr_120px_80px_32px_1fr_28px] gap-1 text-[10px] text-gray-400 font-medium px-1 mb-1">
               <span>PK</span>
               <span>FK</span>
               <span>Name</span>
@@ -126,7 +138,6 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
               <span>NN</span>
               <span>Comment</span>
               <span></span>
-              <span></span>
             </div>
 
             {/* Column rows */}
@@ -134,7 +145,7 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
               {form.columns.map((col, i) => (
                 <div
                   key={col.id}
-                  className="grid grid-cols-[40px_40px_1fr_120px_80px_40px_80px_1fr_32px] gap-1 items-center"
+                  className="grid grid-cols-[32px_32px_1fr_120px_80px_32px_1fr_28px] gap-1 items-center"
                 >
                   <input
                     type="checkbox"
@@ -152,21 +163,22 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
                     type="text"
                     value={col.name}
                     onChange={(e) => updateColumn(i, { name: e.target.value })}
-                    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className={INPUT_CLASS}
                     placeholder="column_name"
                   />
                   <input
                     type="text"
                     value={col.type}
                     onChange={(e) => updateColumn(i, { type: e.target.value })}
-                    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    list="column-types"
+                    className={INPUT_CLASS}
                     placeholder="varchar(255)"
                   />
                   <input
                     type="text"
                     value={col.default ?? ''}
                     onChange={(e) => updateColumn(i, { default: e.target.value })}
-                    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className={INPUT_CLASS}
                     placeholder=""
                   />
                   <input
@@ -179,10 +191,9 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
                     type="text"
                     value={col.comment ?? ''}
                     onChange={(e) => updateColumn(i, { comment: e.target.value })}
-                    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className={INPUT_CLASS}
                     placeholder=""
                   />
-                  <span></span>
                   <button
                     type="button"
                     onClick={() => removeColumn(i)}
@@ -196,6 +207,13 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
             </div>
           </div>
         </div>
+
+        {/* Type datalist */}
+        <datalist id="column-types">
+          {COLUMN_TYPES.map((t) => (
+            <option key={t} value={t} />
+          ))}
+        </datalist>
 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-between">

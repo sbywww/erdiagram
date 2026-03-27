@@ -18,9 +18,24 @@ export interface Table {
 
 export type RelationType = '1:1' | '1:N' | 'N:M'
 
+export interface DisplaySettings {
+  showType: boolean
+  showComment: boolean
+  showNotNull: boolean
+  showPKFK: boolean
+}
+
+export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
+  showType: true,
+  showComment: true,
+  showNotNull: true,
+  showPKFK: true,
+}
+
 export interface Relation {
   id: string
   type: RelationType
+  identifying: boolean
   sourceTableId: string
   sourceColumnId: string
   targetTableId: string
