@@ -101,24 +101,54 @@ function DiagramCanvas() {
     )
   }, [tables, nodePositions, selectedTableId, setNodes])
 
-  // Sync store → React Flow edges (테이블 선택 시 연결된 edge에 animated 전달)
+  // Sync store → React Flow edges (노드 위치에 따라 최적 핸들 방향 결정)
   useEffect(() => {
+    const NODE_WIDTH = 220
+    const MIN_GAP = 50
+    const posMap = new Map(nodes.map((n) => [n.id, n.position]))
+
     setEdges(
       relations.map((r) => {
         const isConnected = selectedTableId === r.sourceTableId || selectedTableId === r.targetTableId
+        const srcX = posMap.get(r.sourceTableId)?.x ?? 0
+        const tgtX = posMap.get(r.targetTableId)?.x ?? 0
+
+        let srcSuffix: string
+        let tgtSuffix: string
+
+        if (srcX <= tgtX) {
+          const gap = tgtX - (srcX + NODE_WIDTH)
+          if (gap < MIN_GAP) {
+            srcSuffix = '-l'
+            tgtSuffix = '-l'
+          } else {
+            srcSuffix = '-r'
+            tgtSuffix = '-l'
+          }
+        } else {
+          const gap = srcX - (tgtX + NODE_WIDTH)
+          if (gap < MIN_GAP) {
+            srcSuffix = '-r'
+            tgtSuffix = '-r'
+          } else {
+            srcSuffix = '-l'
+            tgtSuffix = '-r'
+          }
+        }
+
         return {
           id: r.id,
           source: r.sourceTableId,
-          sourceHandle: r.sourceColumnId,
+          sourceHandle: r.sourceColumnId + srcSuffix,
           target: r.targetTableId,
-          targetHandle: r.targetColumnId,
+          targetHandle: r.targetColumnId + tgtSuffix,
           type: 'relation',
           animated: isConnected,
           data: { relationType: r.type },
         }
       })
     )
-  }, [relations, selectedTableId, setEdges])
+  }, [relations, nodes, selectedTableId, setEdges])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -168,9 +198,9 @@ function DiagramCanvas() {
         id: crypto.randomUUID(),
         type: '1:N' as RelationType,
         sourceTableId: connection.source,
-        sourceColumnId: connection.sourceHandle ?? '',
+        sourceColumnId: (connection.sourceHandle ?? '').replace(/-[lr]$/, ''),
         targetTableId: connection.target,
-        targetColumnId: connection.targetHandle ?? '',
+        targetColumnId: (connection.targetHandle ?? '').replace(/-[lr]$/, ''),
       })
     },
     [addRelation]

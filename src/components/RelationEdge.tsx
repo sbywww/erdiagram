@@ -50,11 +50,12 @@ export function RelationEdge({
           markerWidth={4} markerHeight={10} orient="auto-start-reverse">
           <line x1="6" y1="3" x2="6" y2="17" stroke={stroke} strokeWidth="2" />
         </marker>
-        {/* IE "N/M" — 까마귀 발 (crow's foot) */}
+        {/* IE "N/M" — 까마귀 발 (crow's foot) + 수직 선 */}
         <marker id={manyId} viewBox="0 0 16 20" refX="16" refY="10"
           markerWidth={8} markerHeight={10} orient="auto-start-reverse">
-          <line x1="0" y1="10" x2="16" y2="3" stroke={stroke} strokeWidth="1.5" />
-          <line x1="0" y1="10" x2="16" y2="17" stroke={stroke} strokeWidth="1.5" />
+          <line x1="0" y1="10" x2="16" y2="3" stroke={stroke} strokeWidth="2" />
+          <line x1="0" y1="10" x2="16" y2="10" stroke={stroke} strokeWidth="2.5" />
+          <line x1="0" y1="10" x2="16" y2="17" stroke={stroke} strokeWidth="2" />
         </marker>
       </defs>
       <BaseEdge
@@ -65,8 +66,9 @@ export function RelationEdge({
         style={{
           stroke,
           strokeWidth: 1.5,
-          animation: isActive ? 'dashdraw 0.5s linear infinite' : 'none',
-          strokeDasharray: isActive ? '5 5' : 'none',
+          ...(isActive
+            ? { strokeDasharray: '5 5', animation: 'dashdraw 0.5s linear infinite' }
+            : {}),
         }}
       />
     </g>
