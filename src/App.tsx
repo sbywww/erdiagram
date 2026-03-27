@@ -28,7 +28,7 @@ import { useDiagramStore } from './store/diagramStore.ts'
 import { useThemeStore } from './store/themeStore.ts'
 import type { Table, RelationType } from './models/types.ts'
 
-const LINKING_PICK = LINKING_PICK
+const LINKING_PICK = '__pick__'
 
 const nodeTypes = { table: TableNode }
 const edgeTypes = { relation: RelationEdge }
