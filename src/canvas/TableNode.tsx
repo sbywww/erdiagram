@@ -1,0 +1,81 @@
+/**
+ * ReactFlow 테이블 노드 컴포넌트
+ * - 테이블명(물리/논리), 컬럼 목록을 카드 형태로 렌더링
+ * - 각 컬럼 양쪽에 Handle(연결점)을 배치하여 관계 엣지 연결 지원
+ */
+import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { KeyRound, Link2 } from 'lucide-react'
+import type { Column, DisplaySettings } from '../models/types.ts'
+import { DEFAULT_DISPLAY_SETTINGS } from '../models/types.ts'
+
+interface TableNodeData {
+  physicalName: string
+  logicalName: string
+  columns: Column[]
+  displaySettings?: DisplaySettings
+  [key: string]: unknown
+}
+
+const HANDLE_CLASS = '!w-1.5 !h-1.5 !bg-transparent !border-0 !min-w-0 !min-h-0'
+
+export function TableNode({ data, selected }: NodeProps) {
+  const { physicalName, logicalName, columns, displaySettings } = data as unknown as TableNodeData
+  const ds = displaySettings ?? DEFAULT_DISPLAY_SETTINGS
+
+  return (
+    <div
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg min-w-[240px] text-xs border ${
+        selected
+          ? 'border-blue-400 dark:border-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5),0_0_20px_rgba(59,130,246,0.25)]'
+          : 'border-gray-300 dark:border-gray-600'
+      }`}
+    >
+      <div className="bg-blue-950 dark:bg-blue-900 text-white px-3 py-2 rounded-t-[7px] flex items-center justify-between">
+        <div>
+          <div className="font-bold text-sm">{physicalName}</div>
+          <div className="text-white text-[10px]">{logicalName}</div>
+        </div>
+        <span className="text-[10px] text-blue-300 ml-2 shrink-0">({columns.length})</span>
+      </div>
+
+      <div className="divide-y divide-gray-100 dark:divide-gray-700">
+        {columns.map((col) => (
+          <div
+            key={col.id}
+            className={`relative flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 ${
+              col.isPK ? 'bg-yellow-50/50 dark:bg-yellow-900/10' : ''
+            }`}
+          >
+            <Handle type="target" position={Position.Left} id={`${col.id}-l`}
+              style={{ top: '50%' }} className={HANDLE_CLASS} />
+            <Handle type="source" position={Position.Left} id={`${col.id}-l`}
+              style={{ top: '50%' }} className={HANDLE_CLASS} />
+            {ds.showPKFK && (
+              <span className="w-4 shrink-0 flex items-center justify-center">
+                {col.isPK ? <KeyRound size={12} className="text-yellow-500" />
+                  : col.isFK ? <Link2 size={12} className="text-green-500" />
+                  : null}
+              </span>
+            )}
+            <span className="font-medium text-gray-800 dark:text-gray-200 flex-1 truncate">
+              {col.name}
+              {ds.showNotNull && col.notNull && <span className="text-red-400 ml-0.5">*</span>}
+            </span>
+            {ds.showType && (
+              <span className="text-gray-400 dark:text-gray-500 shrink-0">{col.type}</span>
+            )}
+            {ds.showComment && col.comment && (
+              <span className="text-gray-400 dark:text-gray-500 text-[10px] max-w-[80px] truncate shrink-0" title={col.comment}>
+                {col.comment}
+              </span>
+            )}
+            <Handle type="target" position={Position.Right} id={`${col.id}-r`}
+              style={{ top: '50%' }} className={HANDLE_CLASS} />
+            <Handle type="source" position={Position.Right} id={`${col.id}-r`}
+              style={{ top: '50%' }} className={HANDLE_CLASS} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

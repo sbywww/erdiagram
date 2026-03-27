@@ -1,7 +1,12 @@
+/**
+ * 캔버스 상단 액션 바 컴포넌트
+ * - 테이블/관계 추가, Undo/Redo, 디스플레이 옵션 토글, 패널 열기/닫기
+ */
 import { useState, useRef, useEffect } from 'react'
 import { useDiagramStore } from '../store/diagramStore.ts'
 import { TableProperties, ArrowLeftRight, Undo2, Redo2, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Eye } from 'lucide-react'
 import type { DisplaySettings } from '../models/types.ts'
+import { useI18n } from '../i18n/index.ts'
 
 interface ActionBarProps {
   onAddTable: () => void
@@ -21,6 +26,7 @@ const TOGGLE_ITEMS: { key: keyof DisplaySettings; label: string }[] = [
 
 export function ActionBar({ onAddTable, onAddRelation, editorCollapsed, onToggleEditor, viewsOpen, onToggleViews }: ActionBarProps) {
   const { canUndo, canRedo, undo, redo, displaySettings, setDisplaySettings } = useDiagramStore()
+  const { t } = useI18n()
   const [showDisplayMenu, setShowDisplayMenu] = useState(false)
   const displayMenuRef = useRef<HTMLDivElement>(null)
 
@@ -44,7 +50,7 @@ export function ActionBar({ onAddTable, onAddRelation, editorCollapsed, onToggle
       <button
         onClick={onToggleEditor}
         className={btnClass}
-        title={editorCollapsed ? 'Open JSON Editor' : 'Close JSON Editor'}
+        title={editorCollapsed ? t('action.openJsonEditor') : t('action.closeJsonEditor')}
       >
         {editorCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
       </button>
@@ -53,12 +59,12 @@ export function ActionBar({ onAddTable, onAddRelation, editorCollapsed, onToggle
 
       <button onClick={onAddTable} className={btnClass}>
         <TableProperties size={13} />
-        Add Table
+        {t('action.addTable')}
       </button>
 
       <button onClick={onAddRelation} className={btnClass}>
         <ArrowLeftRight size={13} />
-        Add Relation
+        {t('action.addRelation')}
       </button>
 
       <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
@@ -67,7 +73,7 @@ export function ActionBar({ onAddTable, onAddRelation, editorCollapsed, onToggle
         onClick={undo}
         disabled={!canUndo}
         className={canUndo ? btnClass : disabledClass}
-        title="Undo (Ctrl+Z)"
+        title={t('action.undo')}
       >
         <Undo2 size={13} />
       </button>
@@ -76,7 +82,7 @@ export function ActionBar({ onAddTable, onAddRelation, editorCollapsed, onToggle
         onClick={redo}
         disabled={!canRedo}
         className={canRedo ? btnClass : disabledClass}
-        title="Redo (Ctrl+Shift+Z)"
+        title={t('action.redo')}
       >
         <Redo2 size={13} />
       </button>
@@ -87,10 +93,10 @@ export function ActionBar({ onAddTable, onAddRelation, editorCollapsed, onToggle
         <button
           onClick={() => setShowDisplayMenu((v) => !v)}
           className={btnClass}
-          title="Display settings"
+          title={t('action.display')}
         >
           <Eye size={13} />
-          Display
+          {t('action.display')}
         </button>
 
         {showDisplayMenu && (
@@ -120,7 +126,7 @@ export function ActionBar({ onAddTable, onAddRelation, editorCollapsed, onToggle
       <button
         onClick={onToggleViews}
         className={btnClass}
-        title={viewsOpen ? 'Close Views' : 'Open Views'}
+        title={viewsOpen ? t('action.closeViews') : t('action.openViews')}
       >
         {viewsOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
       </button>

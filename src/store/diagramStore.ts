@@ -1,3 +1,8 @@
+/**
+ * 다이어그램 상태 관리 스토어 (Zustand + localStorage 영속성)
+ * - 테이블/관계 CRUD, 노드 위치, 그룹, 디스플레이 설정
+ * - Undo/Redo 히스토리 (스냅샷 기반, 최대 50단계)
+ */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Table, Relation, DisplaySettings } from '../models/types.ts'
@@ -91,10 +96,12 @@ const demoPositions: Record<string, NodePosition> = {
 
 const MAX_HISTORY = 50
 
+/** 현재 상태의 스냅샷 생성 (Undo/Redo용) */
 function snapshot(state: DiagramState): Snapshot {
   return { tables: state.tables, relations: state.relations, nodePositions: state.nodePositions, tableGroups: state.tableGroups }
 }
 
+/** 변경 전 상태를 히스토리에 저장하고 future 초기화 */
 function withHistory(state: DiagramState): Partial<DiagramState> {
   const past = [...state.past, snapshot(state)].slice(-MAX_HISTORY)
   return { past, future: [], canUndo: true, canRedo: false }
@@ -126,6 +133,8 @@ export const useDiagramStore = create<DiagramState>()(persist((set) => ({
       let tables = state.tables.map((t) => (t.id === id ? { ...t, ...updates } : t))
       let relations = state.relations
 
+      const oldTable = state.tables.find((t) => t.id === id)
+
       if (updates.columns) {
         const updatedColIds = new Set(updates.columns.map((c) => c.id))
         relations = relations.map((r) => {
@@ -137,7 +146,6 @@ export const useDiagramStore = create<DiagramState>()(persist((set) => ({
 
         // PK가 추가/변경되면 이 테이블을 source로 하는 식별 관계의 FK 컬럼 타입 동기화
         const newPKs = updates.columns.filter((c) => c.isPK)
-        const oldTable = state.tables.find((t) => t.id === id)
         const oldPKIds = new Set(oldTable?.columns.filter((c) => c.isPK).map((c) => c.id))
         const addedPKs = newPKs.filter((pk) => !oldPKIds.has(pk.id))
 
@@ -154,6 +162,26 @@ export const useDiagramStore = create<DiagramState>()(persist((set) => ({
               return t
             })
           }
+        }
+      }
+
+      // FK 이름 동기화: 테이블 이름 변경 시 관례적 FK 이름도 업데이트
+      if (updates.physicalName && oldTable && updates.physicalName !== oldTable.physicalName) {
+        const oldFKName = `${oldTable.physicalName}_id`
+        const newFKName = `${updates.physicalName}_id`
+        const sourceRelations = relations.filter((r) => r.identifying && r.sourceTableId === id)
+        for (const rel of sourceRelations) {
+          tables = tables.map((t) => {
+            if (t.id !== rel.targetTableId) return t
+            return {
+              ...t,
+              columns: t.columns.map((c) =>
+                c.id === rel.targetColumnId && c.name === oldFKName
+                  ? { ...c, name: newFKName }
+                  : c
+              ),
+            }
+          })
         }
       }
 
@@ -183,6 +211,7 @@ export const useDiagramStore = create<DiagramState>()(persist((set) => ({
       relations: [...state.relations, relation],
     })),
 
+  /** 관계 삭제 시 식별 관계이면 대상 테이블의 FK 컬럼도 함께 제거 */
   removeRelation: (id) =>
     set((state) => {
       const relation = state.relations.find((r) => r.id === id)
@@ -201,6 +230,7 @@ export const useDiagramStore = create<DiagramState>()(persist((set) => ({
       }
     }),
 
+  /** 관계의 식별/비식별 전환 시 대상 테이블 FK 플래그 동기화 */
   setRelationIdentifying: (relationId, identifying) =>
     set((state) => {
       const relation = state.relations.find((r) => r.id === relationId)
@@ -251,6 +281,7 @@ export const useDiagramStore = create<DiagramState>()(persist((set) => ({
       return { tableGroups: { ...rest, [newName]: ids ?? [] } }
     }),
 
+  /** 테이블을 지정 그룹으로 이동 (기존 그룹에서 먼저 제거) */
   moveTableToGroup: (tableId, groupName) =>
     set((state) => {
       // Remove from all groups first

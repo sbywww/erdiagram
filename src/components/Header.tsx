@@ -1,14 +1,22 @@
+/**
+ * 상단 헤더 컴포넌트
+ * - 워크스페이스 선택/생성, JSON 내보내기/가져오기, 테마/언어 전환
+ */
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useDiagramStore } from '../store/diagramStore.ts'
 import {
   Download, Upload, HelpCircle, Sun, Moon,
-  ChevronDown, Plus, FolderOpen, Settings, Check,
+  ChevronDown, Plus, FolderOpen, Settings, Check, Languages,
 } from 'lucide-react'
 import { useThemeStore } from '../store/themeStore.ts'
+import { useLocaleStore } from '../store/localeStore.ts'
+import { useI18n } from '../i18n/index.ts'
 
 export function Header() {
   const { tables, relations, nodePositions, setDiagram, setNodePosition } = useDiagramStore()
   const { theme, toggleTheme } = useThemeStore()
+  const { locale, setLocale } = useLocaleStore()
+  const { t } = useI18n()
   const [workspaceName, setWorkspaceName] = useState('My Workspace')
   const [wsMenuOpen, setWsMenuOpen] = useState(false)
   const wsMenuRef = useRef<HTMLDivElement>(null)
@@ -101,7 +109,7 @@ export function Header() {
 
               {/* Title */}
               <div className="px-3 py-2">
-                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Workspaces</span>
+                <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('header.workspaces')}</span>
               </div>
 
               {/* Actions */}
@@ -115,7 +123,7 @@ export function Header() {
                   className={menuItemClass}
                 >
                   <Plus size={14} className="text-gray-400" />
-                  Create workspace
+                  {t('header.createWorkspace')}
                 </button>
                 <button
                   onClick={() => {
@@ -125,7 +133,7 @@ export function Header() {
                   className={menuItemClass}
                 >
                   <FolderOpen size={14} className="text-gray-400" />
-                  Open workspace
+                  {t('header.openWorkspace')}
                 </button>
                 <button
                   onClick={() => {
@@ -135,7 +143,7 @@ export function Header() {
                   className={menuItemClass}
                 >
                   <Download size={14} className="text-gray-400" />
-                  Import workspace
+                  {t('header.importWorkspace')}
                 </button>
                 <button
                   onClick={() => {
@@ -145,7 +153,7 @@ export function Header() {
                   className={menuItemClass}
                 >
                   <Settings size={14} className="text-gray-400" />
-                  Manage workspace
+                  {t('header.manageWorkspace')}
                 </button>
               </div>
             </div>
@@ -158,7 +166,7 @@ export function Header() {
         <button
           onClick={handleImport}
           className="p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded"
-          title="Import"
+          title={t('header.import')}
         >
           <Upload size={15} />
         </button>
@@ -166,7 +174,7 @@ export function Header() {
         <button
           onClick={handleExport}
           className="p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded"
-          title="Export"
+          title={t('header.export')}
         >
           <Download size={15} />
         </button>
@@ -175,9 +183,19 @@ export function Header() {
         <button
           onClick={toggleTheme}
           className="p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded"
-          title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+          title={theme === 'light' ? t('header.darkMode') : t('header.lightMode')}
         >
           {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+        </button>
+
+        {/* Language toggle */}
+        <button
+          onClick={() => setLocale(locale === 'en' ? 'ko' : 'en')}
+          className="flex items-center gap-1 px-1.5 py-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded"
+          title="Language"
+        >
+          <Languages size={14} />
+          {locale === 'en' ? 'EN' : 'KO'}
         </button>
 
         {/* Divider */}
@@ -186,7 +204,7 @@ export function Header() {
         {/* Help */}
         <button
           className="p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white rounded"
-          title="Help"
+          title={t('header.help')}
         >
           <HelpCircle size={15} />
         </button>

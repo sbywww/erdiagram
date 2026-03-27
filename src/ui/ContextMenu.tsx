@@ -1,3 +1,7 @@
+/**
+ * 우클릭 컨텍스트 메뉴 컴포넌트
+ * - 지정된 좌표에 메뉴 항목 표시, 외부 클릭/ESC로 닫힘
+ */
 import { useEffect, useRef } from 'react'
 
 export interface MenuItem {

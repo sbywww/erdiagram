@@ -1,5 +1,10 @@
+/**
+ * 캔버스 하단 툴바 컴포넌트
+ * - 줌 인/아웃, 화면 맞춤, 선택/팬 모드 전환
+ */
 import { useReactFlow, useViewport } from '@xyflow/react'
 import { Minus, Plus, Maximize, Hand, MousePointer } from 'lucide-react'
+import { useI18n } from '../i18n/index.ts'
 
 interface ToolbarProps {
   panMode: boolean
@@ -9,6 +14,7 @@ interface ToolbarProps {
 export function Toolbar({ panMode, onPanModeChange }: ToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow()
   const { zoom } = useViewport()
+  const { t } = useI18n()
   const zoomPercent = Math.round(zoom * 100)
 
   return (
@@ -16,7 +22,7 @@ export function Toolbar({ panMode, onPanModeChange }: ToolbarProps) {
       <button
         onClick={() => zoomOut()}
         className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-        title="Zoom out"
+        title={t('toolbar.zoomOut')}
       >
         <Minus size={14} />
       </button>
@@ -28,7 +34,7 @@ export function Toolbar({ panMode, onPanModeChange }: ToolbarProps) {
       <button
         onClick={() => zoomIn()}
         className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-        title="Zoom in"
+        title={t('toolbar.zoomIn')}
       >
         <Plus size={14} />
       </button>
@@ -38,7 +44,7 @@ export function Toolbar({ panMode, onPanModeChange }: ToolbarProps) {
       <button
         onClick={() => fitView({ padding: 0.2 })}
         className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-        title="Zoom to fit all elements in view"
+        title={t('toolbar.fitView')}
       >
         <Maximize size={14} />
       </button>
@@ -48,7 +54,7 @@ export function Toolbar({ panMode, onPanModeChange }: ToolbarProps) {
       <button
         onClick={() => onPanModeChange(false)}
         className={`p-1.5 rounded ${!panMode ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400'}`}
-        title="Select mode (V)"
+        title={t('toolbar.selectMode')}
       >
         <MousePointer size={14} />
       </button>
@@ -56,7 +62,7 @@ export function Toolbar({ panMode, onPanModeChange }: ToolbarProps) {
       <button
         onClick={() => onPanModeChange(true)}
         className={`p-1.5 rounded ${panMode ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400'}`}
-        title="Hand tool — drag to pan (H)"
+        title={t('toolbar.handTool')}
       >
         <Hand size={14} />
       </button>

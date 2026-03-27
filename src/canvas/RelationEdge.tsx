@@ -1,3 +1,9 @@
+/**
+ * ReactFlow 관계 엣지 컴포넌트 (크로우풋 표기법)
+ * - SVG marker로 1(수직선) / N(까마귀 발) 표기
+ * - 식별 관계는 기본 색상, 비식별 관계는 주황색으로 구분
+ * - 호버/선택 시 대시 애니메이션 + 카디널리티 라벨 표시
+ */
 import { useState } from 'react'
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, Position, type EdgeProps } from '@xyflow/react'
 import type { RelationType } from '../models/types.ts'
@@ -13,6 +19,7 @@ function getLabel(marker: 'one' | 'many'): string {
   return marker === 'one' ? '1' : '*'
 }
 
+/** 관계 타입에 따라 source/target의 카디널리티 결정 */
 function getMarkerTypes(type: RelationType): { source: 'one' | 'many'; target: 'one' | 'many' } {
   switch (type) {
     case '1:1': return { source: 'one', target: 'one' }
@@ -21,6 +28,7 @@ function getMarkerTypes(type: RelationType): { source: 'one' | 'many'; target: '
   }
 }
 
+/** Handle 위치에 따른 카디널리티 라벨 오프셋 계산 */
 function getLabelOffset(position: Position): { dx: number; dy: number } {
   switch (position) {
     case Position.Left:  return { dx: -5, dy: -10 }

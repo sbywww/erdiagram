@@ -1,17 +1,9 @@
+/**
+ * 토스트 알림 UI 컴포넌트
+ * - 하단 중앙에 표시, 2초 후 자동 숨김
+ */
 import { useEffect } from 'react'
-import { create } from 'zustand'
-
-interface ToastState {
-  message: string | null
-  show: (message: string) => void
-  hide: () => void
-}
-
-export const useToast = create<ToastState>((set) => ({
-  message: null,
-  show: (message) => set({ message }),
-  hide: () => set({ message: null }),
-}))
+import { useToast } from '../store/toastStore.ts'
 
 export function Toast() {
   const { message, hide } = useToast()

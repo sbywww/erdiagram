@@ -1,7 +1,13 @@
+/**
+ * JSON 에디터 컴포넌트
+ * - 스토어 상태를 JSON 텍스트로 표시하고 직접 편집/적용 가능
+ * - dirty 상태 관리: 편집 중에는 스토어 변경이 덮어쓰지 않음
+ */
 import { useState, useEffect, useCallback } from 'react'
 import { useDiagramStore } from '../store/diagramStore.ts'
 import type { Table, Relation } from '../models/types.ts'
 import { Check, AlertCircle } from 'lucide-react'
+import { useI18n } from '../i18n/index.ts'
 
 interface DiagramJson {
   tables: Table[]
@@ -11,6 +17,7 @@ interface DiagramJson {
 
 export function JsonEditor() {
   const { tables, relations, nodePositions, setDiagram, setNodePosition } = useDiagramStore()
+  const { t } = useI18n()
   const [jsonText, setJsonText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
@@ -71,13 +78,13 @@ export function JsonEditor() {
             onClick={handleApply}
             className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            <Check size={12} /> Apply
+            <Check size={12} /> {t('json.apply')}
           </button>
           <button
             onClick={handleReset}
             className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
           >
-            Reset
+            {t('json.reset')}
           </button>
         </div>
       )}

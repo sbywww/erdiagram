@@ -1,15 +1,13 @@
+/**
+ * 테이블 생성/수정 다이얼로그
+ * - 테이블명, 컬럼(PK/FK/타입/NN/기본값/코멘트) 편집 폼
+ * - FK 컬럼은 관계에 의해 관리되므로 편집 불가
+ */
 import { useState, useEffect } from 'react'
 import type { Table, Column } from '../models/types.ts'
-
-const COLUMN_TYPES = [
-  'bigint', 'int', 'smallint', 'tinyint', 'decimal', 'numeric', 'float', 'double',
-  'varchar(50)', 'varchar(100)', 'varchar(255)', 'char(1)', 'char(36)',
-  'text', 'mediumtext', 'longtext',
-  'boolean', 'bit',
-  'date', 'datetime', 'timestamp', 'time',
-  'json', 'blob', 'mediumblob', 'longblob',
-  'uuid', 'enum',
-]
+import { createEmptyColumn, createEmptyTable } from '../models/types.ts'
+import { useI18n } from '../i18n/index.ts'
+import { TypeAutocomplete } from '../ui/TypeAutocomplete.tsx'
 
 interface TableDialogProps {
   table: Table | null
@@ -19,32 +17,11 @@ interface TableDialogProps {
   onDelete?: (id: string) => void
 }
 
-function createEmptyColumn(): Column {
-  return {
-    id: crypto.randomUUID(),
-    name: '',
-    type: 'varchar(255)',
-    isPK: false,
-    isFK: false,
-    notNull: false,
-    default: '',
-    comment: '',
-  }
-}
-
-function createEmptyTable(): Table {
-  return {
-    id: crypto.randomUUID(),
-    physicalName: '',
-    logicalName: '',
-    columns: [createEmptyColumn()],
-  }
-}
-
 const INPUT_CLASS = 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
 const INPUT_DISABLED_CLASS = 'border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 rounded px-2 py-1 text-xs cursor-not-allowed'
 
 export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }: TableDialogProps) {
+  const { t } = useI18n()
   const [form, setForm] = useState<Table>(table ?? createEmptyTable)
   const [error, setError] = useState('')
   const isEdit = table !== null
@@ -71,8 +48,8 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const name = form.physicalName.trim()
-    if (!name) { setError('Physical Name은 필수입니다'); return }
-    if (existingNames.includes(name)) { setError('이미 존재하는 테이블명입니다'); return }
+    if (!name) { setError(t('dialog.physicalNameRequired')); return }
+    if (existingNames.includes(name)) { setError(t('dialog.duplicateTableName')); return }
     setError('')
     onSave(form)
   }
@@ -86,7 +63,7 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">
-            {isEdit ? 'Edit Table' : 'New Table'}
+            {isEdit ? t('dialog.editTable') : t('dialog.newTable')}
           </h2>
         </div>
 
@@ -96,7 +73,7 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Physical Name *
+                {t('dialog.physicalName')}
               </label>
               <input
                 type="text"
@@ -110,7 +87,7 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Logical Name
+                {t('dialog.logicalName')}
               </label>
               <input
                 type="text"
@@ -125,13 +102,13 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
           {/* Columns */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Columns</label>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('dialog.columns')}</label>
               <button
                 type="button"
                 onClick={addColumn}
                 className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
               >
-                + Add Column
+                {t('dialog.addColumn')}
               </button>
             </div>
 
@@ -166,7 +143,7 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
                     checked={col.isFK}
                     disabled
                     className="justify-self-center cursor-not-allowed"
-                    title="FK는 Relation에서 관리됩니다"
+                    title={t('dialog.fkManagedByRelation')}
                   />
                   <input
                     type="text"
@@ -176,14 +153,12 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
                     className={col.isFK ? INPUT_DISABLED_CLASS : INPUT_CLASS}
                     placeholder="column_name"
                   />
-                  <input
-                    type="text"
+                  <TypeAutocomplete
                     value={col.type}
-                    onChange={(e) => updateColumn(i, { type: e.target.value })}
-                    list={col.isFK ? undefined : 'column-types'}
+                    onChange={(v) => updateColumn(i, { type: v })}
                     disabled={col.isFK}
-                    className={col.isFK ? INPUT_DISABLED_CLASS : INPUT_CLASS}
-                    placeholder="varchar(255)"
+                    className={`w-full ${col.isFK ? INPUT_DISABLED_CLASS : INPUT_CLASS}`}
+                    wrapperClassName="relative min-w-0"
                   />
                   <input
                     type="text"
@@ -206,7 +181,7 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
                     placeholder=""
                   />
                   {col.isFK ? (
-                    <span className="text-[10px] text-gray-400 justify-self-center" title="FK는 Relation에서 관리됩니다">
+                    <span className="text-[10px] text-gray-400 justify-self-center" title={t('dialog.fkManagedByRelation')}>
                       🔒
                     </span>
                   ) : (
@@ -214,7 +189,7 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
                       type="button"
                       onClick={() => removeColumn(i)}
                       className="text-red-400 hover:text-red-600 text-sm justify-self-center"
-                      title="Remove column"
+                      title={t('dialog.removeColumn')}
                     >
                       x
                     </button>
@@ -225,13 +200,6 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
           </div>
         </div>
 
-        {/* Type datalist */}
-        <datalist id="column-types">
-          {COLUMN_TYPES.map((t) => (
-            <option key={t} value={t} />
-          ))}
-        </datalist>
-
         {/* Footer */}
         <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-between">
           <div>
@@ -241,7 +209,7 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
                 onClick={() => onDelete(form.id)}
                 className="px-4 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
               >
-                Delete Table
+                {t('dialog.deleteTable')}
               </button>
             )}
           </div>
@@ -251,13 +219,13 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
               onClick={onCancel}
               className="px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
             >
-              Cancel
+              {t('dialog.cancel')}
             </button>
             <button
               type="submit"
               className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
             >
-              {isEdit ? 'Save' : 'Create'}
+              {isEdit ? t('dialog.save') : t('dialog.create')}
             </button>
           </div>
         </div>

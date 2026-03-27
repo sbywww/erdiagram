@@ -1,7 +1,13 @@
+/**
+ * 우측 뷰 패널 컴포넌트
+ * - 테이블 목록 표시, 그룹 관리, 드래그 앤 드롭으로 그룹 이동
+ * - 테이블 클릭 시 캔버스에서 해당 노드로 포커스 이동
+ */
 import { useState, useMemo } from 'react'
 import { useReactFlow } from '@xyflow/react'
 import { ChevronRight, ChevronDown, FolderPlus, Trash2, GripVertical, X } from 'lucide-react'
 import { useDiagramStore } from '../store/diagramStore.ts'
+import { useI18n } from '../i18n/index.ts'
 
 interface ViewsPanelProps {
   selectedTableId: string | null
@@ -12,6 +18,7 @@ interface ViewsPanelProps {
 export function ViewsPanel({ selectedTableId, onSelectTable, onClose }: ViewsPanelProps) {
   const { tables, tableGroups, addTableGroup, removeTableGroup, moveTableToGroup } = useDiagramStore()
   const reactFlow = useReactFlow()
+  const { t } = useI18n()
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [newGroupName, setNewGroupName] = useState('')
@@ -58,6 +65,7 @@ export function ViewsPanel({ selectedTableId, onSelectTable, onClose }: ViewsPan
     setShowNewGroupInput(false)
   }
 
+  /** 드래그 앤 드롭: 테이블을 그룹 간 이동 */
   const handleDragStart = (tableId: string) => {
     setDraggedTableId(tableId)
   }
@@ -110,19 +118,19 @@ export function ViewsPanel({ selectedTableId, onSelectTable, onClose }: ViewsPan
     <div className="w-[300px] h-full border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
-        <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300">Views</span>
+        <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300">{t('panel.views')}</span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowNewGroupInput(true)}
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-            title="New Group"
+            title={t('views.newGroup')}
           >
             <FolderPlus size={13} />
           </button>
           <button
             onClick={onClose}
             className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
-            title="Close"
+            title={t('editor.close')}
           >
             <X size={14} className="text-gray-600 dark:text-gray-400" />
           </button>
@@ -132,7 +140,7 @@ export function ViewsPanel({ selectedTableId, onSelectTable, onClose }: ViewsPan
       {/* Table count */}
       <div className="px-3 py-1.5 shrink-0">
         <span className="text-[10px] text-gray-400 dark:text-gray-500">
-          {tables.length} tables
+          {t('views.tables', { count: tables.length })}
         </span>
       </div>
 
@@ -155,7 +163,7 @@ export function ViewsPanel({ selectedTableId, onSelectTable, onClose }: ViewsPan
             onClick={handleCreateGroup}
             className="px-2 py-1 text-[10px] bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Add
+            {t('views.add')}
           </button>
         </div>
       )}
@@ -192,7 +200,7 @@ export function ViewsPanel({ selectedTableId, onSelectTable, onClose }: ViewsPan
                 <button
                   onClick={() => removeTableGroup(groupName)}
                   className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 shrink-0 transition-opacity"
-                  title="Delete Group"
+                  title={t('views.deleteGroup')}
                 >
                   <Trash2 size={11} />
                 </button>
@@ -202,7 +210,7 @@ export function ViewsPanel({ selectedTableId, onSelectTable, onClose }: ViewsPan
                 <div className="pl-3">
                   {groupTables.length === 0 ? (
                     <div className="text-[10px] text-gray-400 dark:text-gray-500 px-2 py-1 italic">
-                      Drag tables here
+                      {t('views.dragTablesHere')}
                     </div>
                   ) : (
                     groupTables.map((t) => tableItem(t.id, t.physicalName, t.logicalName, t.columns.length))
@@ -221,7 +229,7 @@ export function ViewsPanel({ selectedTableId, onSelectTable, onClose }: ViewsPan
         >
           {Object.keys(tableGroups).length > 0 && ungroupedTables.length > 0 && (
             <div className="text-[10px] text-gray-400 dark:text-gray-500 px-2 py-1 font-medium">
-              Ungrouped
+              {t('views.ungrouped')}
             </div>
           )}
           {ungroupedTables.map((t) => tableItem(t.id, t.physicalName, t.logicalName, t.columns.length))}
