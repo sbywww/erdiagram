@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { Table, Relation, DisplaySettings } from '../models/types.ts'
 import { DEFAULT_DISPLAY_SETTINGS } from '../models/types.ts'
 
@@ -30,6 +31,8 @@ interface DiagramState {
   setNodePosition: (id: string, position: NodePosition) => void
   addRelation: (relation: Relation) => void
   removeRelation: (id: string) => void
+  setRelationIdentifying: (relationId: string, identifying: boolean) => void
+  updateRelationType: (relationId: string, type: import('../models/types.ts').RelationType) => void
   setDiagram: (tables: Table[], relations: Relation[]) => void
   addTableGroup: (name: string) => void
   removeTableGroup: (name: string) => void
@@ -97,7 +100,7 @@ function withHistory(state: DiagramState): Partial<DiagramState> {
   return { past, future: [], canUndo: true, canRedo: false }
 }
 
-export const useDiagramStore = create<DiagramState>((set) => ({
+export const useDiagramStore = create<DiagramState>()(persist((set) => ({
   tables: demoTables,
   relations: demoRelations,
   nodePositions: demoPositions,
@@ -120,21 +123,41 @@ export const useDiagramStore = create<DiagramState>((set) => ({
 
   updateTable: (id, updates) =>
     set((state) => {
-      const updatedTables = state.tables.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      let tables = state.tables.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      let relations = state.relations
 
-      if (!updates.columns) {
-        return { ...withHistory(state), tables: updatedTables }
+      if (updates.columns) {
+        const updatedColIds = new Set(updates.columns.map((c) => c.id))
+        relations = relations.map((r) => {
+          if (r.identifying && r.targetTableId === id && !updatedColIds.has(r.targetColumnId)) {
+            return { ...r, identifying: false }
+          }
+          return r
+        })
+
+        // PK가 추가/변경되면 이 테이블을 source로 하는 식별 관계의 FK 컬럼 타입 동기화
+        const newPKs = updates.columns.filter((c) => c.isPK)
+        const oldTable = state.tables.find((t) => t.id === id)
+        const oldPKIds = new Set(oldTable?.columns.filter((c) => c.isPK).map((c) => c.id))
+        const addedPKs = newPKs.filter((pk) => !oldPKIds.has(pk.id))
+
+        if (addedPKs.length > 0) {
+          const sourceRelations = relations.filter((r) => r.identifying && r.sourceTableId === id)
+          for (const rel of sourceRelations) {
+            const sourcePK = addedPKs[0]
+            tables = tables.map((t) => {
+              if (t.id !== rel.targetTableId) return t
+              const hasFK = t.columns.some((c) => c.id === rel.targetColumnId)
+              if (hasFK) {
+                return { ...t, columns: t.columns.map((c) => c.id === rel.targetColumnId ? { ...c, type: sourcePK.type } : c) }
+              }
+              return t
+            })
+          }
+        }
       }
 
-      const updatedColIds = new Set(updates.columns.map((c) => c.id))
-      const relations = state.relations.map((r) => {
-        if (r.identifying && r.targetTableId === id && !updatedColIds.has(r.targetColumnId)) {
-          return { ...r, identifying: false }
-        }
-        return r
-      })
-
-      return { ...withHistory(state), tables: updatedTables, relations }
+      return { ...withHistory(state), tables, relations }
     }),
 
   removeTable: (id) =>
@@ -177,6 +200,32 @@ export const useDiagramStore = create<DiagramState>((set) => ({
         relations: state.relations.filter((r) => r.id !== id),
       }
     }),
+
+  setRelationIdentifying: (relationId, identifying) =>
+    set((state) => {
+      const relation = state.relations.find((r) => r.id === relationId)
+      if (!relation || relation.identifying === identifying) return state
+
+      return {
+        ...withHistory(state),
+        tables: state.tables.map((t) =>
+          t.id === relation.targetTableId
+            ? { ...t, columns: t.columns.map((c) => c.id === relation.targetColumnId ? { ...c, isFK: identifying } : c) }
+            : t
+        ),
+        relations: state.relations.map((r) =>
+          r.id === relationId ? { ...r, identifying } : r
+        ),
+      }
+    }),
+
+  updateRelationType: (relationId, type) =>
+    set((state) => ({
+      ...withHistory(state),
+      relations: state.relations.map((r) =>
+        r.id === relationId ? { ...r, type } : r
+      ),
+    })),
 
   setDiagram: (tables, relations) =>
     set((state) => ({
@@ -246,4 +295,13 @@ export const useDiagramStore = create<DiagramState>((set) => ({
         canRedo: state.future.length > 1,
       }
     }),
+}), {
+  name: 'erdiagram-store',
+  partialize: (state) => ({
+    tables: state.tables,
+    relations: state.relations,
+    nodePositions: state.nodePositions,
+    tableGroups: state.tableGroups,
+    displaySettings: state.displaySettings,
+  }),
 }))

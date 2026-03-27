@@ -13,6 +13,7 @@ const COLUMN_TYPES = [
 
 interface TableDialogProps {
   table: Table | null
+  existingNames: string[]
   onSave: (table: Table) => void
   onCancel: () => void
   onDelete?: (id: string) => void
@@ -41,9 +42,11 @@ function createEmptyTable(): Table {
 }
 
 const INPUT_CLASS = 'border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500'
+const INPUT_DISABLED_CLASS = 'border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 rounded px-2 py-1 text-xs cursor-not-allowed'
 
-export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogProps) {
+export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }: TableDialogProps) {
   const [form, setForm] = useState<Table>(table ?? createEmptyTable)
+  const [error, setError] = useState('')
   const isEdit = table !== null
 
   useEffect(() => {
@@ -67,7 +70,10 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.physicalName.trim()) return
+    const name = form.physicalName.trim()
+    if (!name) { setError('Physical Name은 필수입니다'); return }
+    if (existingNames.includes(name)) { setError('이미 존재하는 테이블명입니다'); return }
+    setError('')
     onSave(form)
   }
 
@@ -95,11 +101,12 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
               <input
                 type="text"
                 value={form.physicalName}
-                onChange={(e) => setForm((prev) => ({ ...prev, physicalName: e.target.value }))}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => { setForm((prev) => ({ ...prev, physicalName: e.target.value })); setError('') }}
+                className={`w-full border ${error ? 'border-red-400' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="users"
                 autoFocus
               />
+              {error && <p className="text-red-500 text-[10px] mt-1">{error}</p>}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -151,27 +158,31 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
                     type="checkbox"
                     checked={col.isPK}
                     onChange={(e) => updateColumn(i, { isPK: e.target.checked })}
+                    disabled={col.isFK}
                     className="justify-self-center"
                   />
                   <input
                     type="checkbox"
                     checked={col.isFK}
-                    onChange={(e) => updateColumn(i, { isFK: e.target.checked })}
-                    className="justify-self-center"
+                    disabled
+                    className="justify-self-center cursor-not-allowed"
+                    title="FK는 Relation에서 관리됩니다"
                   />
                   <input
                     type="text"
                     value={col.name}
                     onChange={(e) => updateColumn(i, { name: e.target.value })}
-                    className={INPUT_CLASS}
+                    disabled={col.isFK}
+                    className={col.isFK ? INPUT_DISABLED_CLASS : INPUT_CLASS}
                     placeholder="column_name"
                   />
                   <input
                     type="text"
                     value={col.type}
                     onChange={(e) => updateColumn(i, { type: e.target.value })}
-                    list="column-types"
-                    className={INPUT_CLASS}
+                    list={col.isFK ? undefined : 'column-types'}
+                    disabled={col.isFK}
+                    className={col.isFK ? INPUT_DISABLED_CLASS : INPUT_CLASS}
                     placeholder="varchar(255)"
                   />
                   <input
@@ -194,14 +205,20 @@ export function TableDialog({ table, onSave, onCancel, onDelete }: TableDialogPr
                     className={INPUT_CLASS}
                     placeholder=""
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeColumn(i)}
-                    className="text-red-400 hover:text-red-600 text-sm justify-self-center"
-                    title="Remove column"
-                  >
-                    x
-                  </button>
+                  {col.isFK ? (
+                    <span className="text-[10px] text-gray-400 justify-self-center" title="FK는 Relation에서 관리됩니다">
+                      🔒
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => removeColumn(i)}
+                      className="text-red-400 hover:text-red-600 text-sm justify-self-center"
+                      title="Remove column"
+                    >
+                      x
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

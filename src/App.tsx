@@ -23,9 +23,12 @@ import { Header } from './components/Header.tsx'
 import { ActionBar } from './components/ActionBar.tsx'
 import { TableDialog } from './components/TableDialog.tsx'
 import { ContextMenu, type MenuItem } from './components/ContextMenu.tsx'
+import { Toast, useToast } from './components/Toast.tsx'
 import { useDiagramStore } from './store/diagramStore.ts'
 import { useThemeStore } from './store/themeStore.ts'
 import type { Table, RelationType } from './models/types.ts'
+
+const LINKING_PICK = LINKING_PICK
 
 const nodeTypes = { table: TableNode }
 const edgeTypes = { relation: RelationEdge }
@@ -67,9 +70,10 @@ function DiagramCanvas() {
   const {
     tables, relations, nodePositions,
     addTable, updateTable, removeTable, setNodePosition,
-    addRelation, removeRelation, displaySettings, setDisplaySettings, undo, redo,
+    addRelation, removeRelation, setRelationIdentifying, updateRelationType, displaySettings, setDisplaySettings, undo, redo,
   } = useDiagramStore()
   const theme = useThemeStore((s) => s.theme)
+  const toast = useToast((s) => s.show)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
@@ -84,7 +88,8 @@ function DiagramCanvas() {
   const [modalState, setModalState] = useState<ModalState>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [linkingSourceId, setLinkingSourceId] = useState<string | null>(null)
-  const [linkingConfirm, setLinkingConfirm] = useState<{ sourceId: string; targetId: string } | null>(null)
+  const [linkingConfirm, setLinkingConfirm] = useState<{ sourceId: string; targetId: string; relationType: RelationType } | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ tableId: string; name: string; relationCount: number } | null>(null)
 
   // Sync store → React Flow nodes
   useEffect(() => {
@@ -213,8 +218,14 @@ function DiagramCanvas() {
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (linkingSourceId === LINKING_PICK) {
+        setLinkingSourceId(node.id)
+        setSelectedTableId(node.id)
+        setContextMenu(null)
+        return
+      }
       if (linkingSourceId && linkingSourceId !== node.id) {
-        setLinkingConfirm({ sourceId: linkingSourceId, targetId: node.id })
+        setLinkingConfirm({ sourceId: linkingSourceId, targetId: node.id, relationType: '1:N' })
         setLinkingSourceId(null)
       }
       setSelectedTableId(node.id)
@@ -226,7 +237,7 @@ function DiagramCanvas() {
   const handleLinkingConfirm = useCallback(
     (identifying: boolean) => {
       if (!linkingConfirm) return
-      const { sourceId, targetId } = linkingConfirm
+      const { sourceId, targetId, relationType } = linkingConfirm
       const sourceTable = tables.find((t) => t.id === sourceId)
       const targetTable = tables.find((t) => t.id === targetId)
       if (!sourceTable || !targetTable) return
@@ -266,7 +277,7 @@ function DiagramCanvas() {
 
       addRelation({
         id: crypto.randomUUID(),
-        type: '1:N',
+        type: relationType,
         identifying,
         sourceTableId: sourceId,
         sourceColumnId: sourcePK.id,
@@ -274,9 +285,10 @@ function DiagramCanvas() {
         targetColumnId: targetColId,
       })
 
+      toast(`${sourceTable.physicalName} → ${targetTable.physicalName} 관계가 생성되었습니다`)
       setLinkingConfirm(null)
     },
-    [linkingConfirm, tables, addRelation, updateTable]
+    [linkingConfirm, tables, addRelation, updateTable, toast]
   )
 
   const onPaneClick = useCallback(() => {
@@ -331,33 +343,57 @@ function DiagramCanvas() {
             icon: <Trash2 size={13} />,
             danger: true,
             onClick: () => {
-              removeTable(node.id)
-              setSelectedTableId(null)
+              const t = tables.find((tb) => tb.id === node.id)
+              const relCount = relations.filter((r) => r.sourceTableId === node.id || r.targetTableId === node.id).length
+              setDeleteConfirm({ tableId: node.id, name: t?.physicalName ?? '', relationCount: relCount })
             },
           },
         ],
       })
     },
-    [removeTable]
+    [tables, relations]
   )
 
   const onEdgeContextMenu = useCallback(
     (e: React.MouseEvent, edge: Edge) => {
       e.preventDefault()
-      setContextMenu({
-        x: e.clientX,
-        y: e.clientY,
-        items: [
-          {
-            label: 'Delete Relation',
-            icon: <Trash2 size={13} />,
-            danger: true,
-            onClick: () => removeRelation(edge.id),
-          },
-        ],
+      const relation = relations.find((r) => r.id === edge.id)
+      const items: MenuItem[] = []
+
+      const types: RelationType[] = ['1:1', '1:N', 'N:M']
+      for (const rt of types) {
+        if (relation?.type !== rt) {
+          items.push({
+            label: `${rt} 으로 변경`,
+            onClick: () => updateRelationType(edge.id, rt),
+          })
+        }
+      }
+
+      if (relation?.identifying) {
+        items.push({
+          label: '비식별 관계로 변경',
+          icon: <ArrowLeftRight size={13} />,
+          onClick: () => setRelationIdentifying(edge.id, false),
+        })
+      } else {
+        items.push({
+          label: '식별 관계로 변경',
+          icon: <ArrowLeftRight size={13} />,
+          onClick: () => setRelationIdentifying(edge.id, true),
+        })
+      }
+
+      items.push({
+        label: 'Delete Relation',
+        icon: <Trash2 size={13} />,
+        danger: true,
+        onClick: () => removeRelation(edge.id),
       })
+
+      setContextMenu({ x: e.clientX, y: e.clientY, items })
     },
-    [removeRelation]
+    [relations, removeRelation, setRelationIdentifying, updateRelationType]
   )
 
   // Modal handlers
@@ -365,12 +401,14 @@ function DiagramCanvas() {
     (table: Table) => {
       if (modalState?.type === 'create') {
         addTable(table, modalState.position)
+        toast(`${table.physicalName} 테이블이 생성되었습니다`)
       } else if (modalState?.type === 'edit') {
         updateTable(table.id, table)
+        toast(`${table.physicalName} 테이블이 수정되었습니다`)
       }
       setModalState(null)
     },
-    [modalState, addTable, updateTable]
+    [modalState, addTable, updateTable, toast]
   )
 
   const handleModalDelete = useCallback(
@@ -406,7 +444,8 @@ function DiagramCanvas() {
           <ActionBar
             onAddTable={handleAddTable}
             onAddRelation={() => {
-              // TODO: relation dialog
+              if (tables.length < 2) return
+              setLinkingSourceId(LINKING_PICK)
             }}
             editorCollapsed={editorCollapsed}
             onToggleEditor={() => setEditorCollapsed(!editorCollapsed)}
@@ -448,7 +487,9 @@ function DiagramCanvas() {
               <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-blue-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg">
                 <Link size={12} />
                 <span>
-                  {tables.find((t) => t.id === linkingSourceId)?.physicalName} — 연결할 테이블을 클릭하세요
+                  {linkingSourceId === LINKING_PICK
+                    ? 'Source 테이블을 클릭하세요'
+                    : `${tables.find((t) => t.id === linkingSourceId)?.physicalName} — 연결할 테이블을 클릭하세요`}
                 </span>
                 <button
                   onClick={() => setLinkingSourceId(null)}
@@ -490,10 +531,26 @@ function DiagramCanvas() {
             <div className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-1">
               Relation 유형 선택
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               {tables.find((t) => t.id === linkingConfirm.sourceId)?.physicalName}
               {' → '}
               {tables.find((t) => t.id === linkingConfirm.targetId)?.physicalName}
+            </div>
+            <div className="flex gap-1 mb-3">
+              {(['1:1', '1:N', 'N:M'] as RelationType[]).map((rt) => (
+                <button
+                  key={rt}
+                  type="button"
+                  onClick={() => setLinkingConfirm({ ...linkingConfirm, relationType: rt })}
+                  className={`flex-1 px-2 py-1 text-xs font-medium rounded ${
+                    linkingConfirm.relationType === rt
+                      ? 'bg-blue-900 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {rt}
+                </button>
+              ))}
             </div>
             <div className="flex gap-2">
               <button
@@ -521,10 +578,51 @@ function DiagramCanvas() {
         </div>
       )}
 
+      {/* Delete Confirm Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-5 min-w-[280px]">
+            <div className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">
+              테이블 삭제
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span className="font-medium text-gray-700 dark:text-gray-300">{deleteConfirm.name}</span> 테이블을 삭제하시겠습니까?
+            </div>
+            {deleteConfirm.relationCount > 0 && (
+              <div className="text-xs text-red-500 mb-3">
+                연결된 관계 {deleteConfirm.relationCount}개가 함께 삭제됩니다.
+              </div>
+            )}
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  removeTable(deleteConfirm.tableId)
+                  toast(`${deleteConfirm.name} 테이블이 삭제되었습니다`)
+                  setSelectedTableId(null)
+                  setDeleteConfirm(null)
+                }}
+                className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-red-500 rounded-md hover:bg-red-600"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table Modal (Create / Edit) */}
       {modalState && (
         <TableDialog
           table={modalState.type === 'edit' ? editingTable : null}
+          existingNames={tables
+            .filter((t) => modalState.type !== 'edit' || t.id !== modalState.tableId)
+            .map((t) => t.physicalName)}
           onSave={handleModalSave}
           onCancel={() => setModalState(null)}
           onDelete={modalState.type === 'edit' ? handleModalDelete : undefined}
@@ -538,6 +636,7 @@ export default function App() {
   return (
     <ReactFlowProvider>
       <DiagramCanvas />
+      <Toast />
     </ReactFlowProvider>
   )
 }

@@ -11,6 +11,7 @@ interface TableNodeData {
 }
 
 const HANDLE_CLASS = '!w-1.5 !h-1.5 !bg-transparent !border-0 !min-w-0 !min-h-0'
+const SEP = <span className="text-gray-300 dark:text-gray-600">|</span>
 
 export function TableNode({ data, selected }: NodeProps) {
   const { physicalName, logicalName, columns, displaySettings } = data as unknown as TableNodeData
@@ -31,24 +32,41 @@ export function TableNode({ data, selected }: NodeProps) {
 
       <div className="divide-y divide-gray-100 dark:divide-gray-700">
         {columns.map((col) => (
-          <div key={col.id} className="relative flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700">
+          <div key={col.id} className="relative flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700">
             <Handle type="target" position={Position.Left} id={`${col.id}-l`}
               style={{ top: '50%' }} className={HANDLE_CLASS} />
             <Handle type="source" position={Position.Left} id={`${col.id}-l`}
               style={{ top: '50%' }} className={HANDLE_CLASS} />
             {ds.showPKFK && (
-              <span className="w-8 text-[10px] text-gray-400 shrink-0">
-                {col.isPK && <span className="text-yellow-500 font-bold">PK</span>}
-                {col.isFK && <span className="text-green-500 font-bold">FK</span>}
-              </span>
+              <>
+                <span className="w-6 text-[10px] shrink-0 text-center">
+                  {col.isPK ? <span className="text-yellow-500 font-bold">PK</span>
+                    : col.isFK ? <span className="text-green-500 font-bold">FK</span>
+                    : null}
+                </span>
+                {SEP}
+              </>
             )}
-            <span className="font-medium text-gray-800 dark:text-gray-200 flex-1">{col.name}</span>
-            {ds.showType && <span className="text-gray-400 dark:text-gray-500">{col.type}</span>}
-            {ds.showNotNull && col.notNull && <span className="text-red-400 text-[10px]">NN</span>}
+            <span className="font-medium text-gray-800 dark:text-gray-200 flex-1 truncate">{col.name}</span>
+            {ds.showType && (
+              <>
+                {SEP}
+                <span className="text-gray-400 dark:text-gray-500 shrink-0">{col.type}</span>
+              </>
+            )}
+            {ds.showNotNull && col.notNull && (
+              <>
+                {SEP}
+                <span className="text-red-400 text-[10px] shrink-0">NN</span>
+              </>
+            )}
             {ds.showComment && col.comment && (
-              <span className="text-gray-400 dark:text-gray-500 text-[10px] max-w-[80px] truncate" title={col.comment}>
-                {col.comment}
-              </span>
+              <>
+                {SEP}
+                <span className="text-gray-400 dark:text-gray-500 text-[10px] max-w-[80px] truncate shrink-0" title={col.comment}>
+                  {col.comment}
+                </span>
+              </>
             )}
             <Handle type="target" position={Position.Right} id={`${col.id}-r`}
               style={{ top: '50%' }} className={HANDLE_CLASS} />
