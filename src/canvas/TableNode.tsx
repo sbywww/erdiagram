@@ -30,7 +30,7 @@ export function TableNode({ data, selected }: NodeProps) {
           : 'border-gray-300 dark:border-gray-600'
       }`}
     >
-      <div className="bg-blue-950 dark:bg-blue-900 text-white px-3 py-2 rounded-t-[7px] flex items-center justify-between">
+      <div className="bg-[#1a1a1a] dark:bg-[#1a1a1a] text-white px-3 py-2 rounded-t-[7px] flex items-center justify-between">
         <div>
           <div className="font-bold text-sm">{physicalName}</div>
           <div className="text-white text-[10px]">{logicalName}</div>
@@ -42,9 +42,7 @@ export function TableNode({ data, selected }: NodeProps) {
         {columns.map((col) => (
           <div
             key={col.id}
-            className={`relative flex items-center gap-1.5 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 ${
-              col.isPK ? 'bg-yellow-50/50 dark:bg-yellow-900/10' : ''
-            }`}
+            className="relative flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50/50 dark:bg-yellow-900/10 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <Handle type="target" position={Position.Left} id={`${col.id}-l`}
               style={{ top: '50%' }} className={HANDLE_CLASS} />

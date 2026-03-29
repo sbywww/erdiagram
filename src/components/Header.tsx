@@ -78,7 +78,7 @@ export function Header() {
   const menuItemClass = 'w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
 
   return (
-    <header className="h-11 bg-white dark:bg-black border-b border-gray-200 dark:border-transparent flex items-center justify-between px-4 shrink-0">
+    <header className="h-11 bg-white dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-transparent flex items-center justify-between px-4 shrink-0">
       {/* Left: Logo + Workspace */}
       <div className="flex items-center gap-3">
         {/* Logo */}

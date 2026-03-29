@@ -14,7 +14,7 @@ export function MiniMapNode({ id, x, y, width }: { id: string; x: number; y: num
 
   return (
     <g transform={`translate(${x}, ${y})`}>
-      <rect width={width} height={MINI_HEADER} rx={2} fill="#172554" />
+      <rect width={width} height={MINI_HEADER} rx={2} fill="#1a1a1a" />
       <rect y={MINI_HEADER} width={width} height={colCount * MINI_ROW} fill="#dbeafe" stroke="#93c5fd" strokeWidth={0.5} />
       {Array.from({ length: colCount }, (_, i) => (
         <line key={i} x1={0} y1={MINI_HEADER + i * MINI_ROW} x2={width} y2={MINI_HEADER + i * MINI_ROW} stroke="#bfdbfe" strokeWidth={0.3} />

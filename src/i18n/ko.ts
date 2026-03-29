@@ -66,6 +66,7 @@ export const ko: Record<string, string> = {
 
   // Toast
   'toast.relationCreated': '{{source}} → {{target}} 관계가 생성되었습니다',
+  'toast.duplicateRelation': '이미 연결된 관계가 존재합니다',
   'toast.tableCreated': '{{name}} 테이블이 생성되었습니다',
   'toast.tableUpdated': '{{name}} 테이블이 수정되었습니다',
   'toast.tableDeleted': '{{name}} 테이블이 삭제되었습니다',

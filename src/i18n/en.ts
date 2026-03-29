@@ -66,6 +66,7 @@ export const en: Record<string, string> = {
 
   // Toast
   'toast.relationCreated': '{{source}} → {{target}} relation created',
+  'toast.duplicateRelation': 'Relation already exists between these tables',
   'toast.tableCreated': '{{name}} table created',
   'toast.tableUpdated': '{{name}} table updated',
   'toast.tableDeleted': '{{name}} table deleted',

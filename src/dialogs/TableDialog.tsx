@@ -149,8 +149,7 @@ export function TableDialog({ table, existingNames, onSave, onCancel, onDelete }
                     type="text"
                     value={col.name}
                     onChange={(e) => updateColumn(i, { name: e.target.value })}
-                    disabled={col.isFK}
-                    className={col.isFK ? INPUT_DISABLED_CLASS : INPUT_CLASS}
+                    className={INPUT_CLASS}
                     placeholder="column_name"
                   />
                   <TypeAutocomplete

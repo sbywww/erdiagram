@@ -178,6 +178,15 @@ function DiagramCanvas() {
   const onConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return
+      const duplicate = relations.some(
+        (r) =>
+          (r.sourceTableId === connection.source && r.targetTableId === connection.target) ||
+          (r.sourceTableId === connection.target && r.targetTableId === connection.source)
+      )
+      if (duplicate) {
+        toast(t('toast.duplicateRelation'))
+        return
+      }
       addRelation({
         id: crypto.randomUUID(),
         type: '1:N' as RelationType,
@@ -188,7 +197,7 @@ function DiagramCanvas() {
         targetColumnId: (connection.targetHandle ?? '').replace(/-[lr]$/, ''),
       })
     },
-    [addRelation]
+    [addRelation, relations, toast, t]
   )
 
   // 노드 클릭 — 관계 연결 모드일 때 소스/타겟 선택 처리
@@ -215,6 +224,16 @@ function DiagramCanvas() {
     (identifying: boolean) => {
       if (!linkingConfirm) return
       const { sourceId, targetId, relationType } = linkingConfirm
+      const duplicate = relations.some(
+        (r) =>
+          (r.sourceTableId === sourceId && r.targetTableId === targetId) ||
+          (r.sourceTableId === targetId && r.targetTableId === sourceId)
+      )
+      if (duplicate) {
+        toast(t('toast.duplicateRelation'))
+        setLinkingConfirm(null)
+        return
+      }
       const sourceTable = tables.find((tb) => tb.id === sourceId)
       const targetTable = tables.find((tb) => tb.id === targetId)
       if (!sourceTable || !targetTable) return
